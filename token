@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+
+contract ServiceToken is ERC20, Ownable, ERC20Burnable {
+    event LogMessage(string message);
+    event ServiceRedeemed(address indexed player, uint256 amount, string productName);
+
+    enum ServiceType { CarRental, BikeRental, MobileServiceSubscription }
+
+    mapping(ServiceType => uint256) public serviceRates;
+    mapping(ServiceType => string) public serviceProducts;
+    ServiceType public recentlyRedeemedService;
+
+    constructor(address initialOwner) Ownable(initialOwner) ERC20("Service Token", "SERVICE") {
+        // Initialize serviceRates and serviceProducts in the constructor
+        setRatesAndProducts();
+    }
+
+    function setRatesAndProducts() internal {
+        // Set rates and product names for each service type
+        serviceRates[ServiceType.CarRental] = 1000;
+        serviceRates[ServiceType.BikeRental] = 500;
+        serviceRates[ServiceType.MobileServiceSubscription] = 200;
+
+        serviceProducts[ServiceType.CarRental] = "Car Rental";
+        serviceProducts[ServiceType.BikeRental] = "Bike Rental";
+        serviceProducts[ServiceType.MobileServiceSubscription] = "Mobile Service Subscription";
+    }
+
+    function mintTokens(address beneficiary, uint256 amount) external onlyOwner {
+        _mint(beneficiary, amount);
+    }
+
+    function burnTokens(uint256 amount) external {
+        require(balanceOf(msg.sender) >= amount, "INSUFFICIENT TOKENS!!");
+        _burn(msg.sender, amount);
+        emit LogMessage("Tokens burned successfully");
+    }
+
+    function transferTokens(address recipient, uint256 amount) external {
+        require(balanceOf(msg.sender) >= amount, "INSUFFICIENT TOKENS!!");
+        _transfer(msg.sender, recipient, amount);
+    }
+
+    function redeemForService(uint256 tokenAmount) external {
+        // Determine which service type to redeem based on tokenAmount
+        if (serviceRates[ServiceType.CarRental] <= tokenAmount) {
+            recentlyRedeemedService = ServiceType.CarRental;
+        } else if (serviceRates[ServiceType.BikeRental] <= tokenAmount) {
+            recentlyRedeemedService = ServiceType.BikeRental;
+        } else if (serviceRates[ServiceType.MobileServiceSubscription] <= tokenAmount) {
+            recentlyRedeemedService = ServiceType.MobileServiceSubscription;
+        } else {
+            revert("No service can be redeemed with the specified token amount");
+        }
+
+        // Check if the selected service type has a positive rate and if the caller has enough tokens
+        require(serviceRates[recentlyRedeemedService] > 0, "Invalid service type");
+        require(balanceOf(msg.sender) >= serviceRates[recentlyRedeemedService], "INSUFFICIENT TOKENS!!");
+
+        // Burn tokens from the caller's balance
+        _burn(msg.sender, serviceRates[recentlyRedeemedService]);
+
+        // Emit an event indicating the service was redeemed, including the product name
+        emit ServiceRedeemed(msg.sender, serviceRates[recentlyRedeemedService], serviceProducts[recentlyRedeemedService]);
+        emit LogMessage("Service redeemed successfully");
+    }
+
+    function getRecentlyRedeemedService() external view returns (string memory) {
+        // Return the product name for the recently redeemed service type
+        return serviceProducts[recentlyRedeemedService];
+    }
+}
