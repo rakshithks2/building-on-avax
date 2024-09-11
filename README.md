@@ -2,6 +2,7 @@
 
 ## Overview
 
+
 The `ServiceToken` smart contract is an ERC20 token implementation with additional functionalities that include burning tokens and redeeming them for specific services. The contract utilizes the OpenZeppelin library for secure and standardized token management. This token can be minted by the owner, transferred between addresses, and burned for predefined services such as car rentals, bike rentals, and mobile service subscriptions.
 
 ## Features
